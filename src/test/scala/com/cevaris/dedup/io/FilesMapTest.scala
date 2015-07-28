@@ -7,44 +7,45 @@ import scalax.file.Path
 
 class FilesMapTest extends org.scalatest.FunSuite {
 
-  val txt = ".txt"
-  val dir = ".dir"
+  /*
+  testdir (master|+2?) ~࿔ tree
+  .
+  ├── 0
+  │   ├── 0
+  │   │   └── 0
+  │   ├── 0.txt
+  │   ├── 1
+  │   │   ├── 0.txt
+  │   │   └── 1.txt
+  │   └── 1.txt
+  ├── a
+  │   └── b
+  │       └── c
+  │           └── d
+  │               └── abcd.txt
+  ├── e
+  │   └── f
+  │       └── g
+  │           └── efg.txt
+  ├── h
+  │   └── i
+  │       └── hi.txt
+  └── j.txt
+   */
 
-  val testDir = {
-    val root = TempDirectory.create()
-    File.createTempFile("000",txt,root)
-    File.createTempFile("001",txt,root)
-    File.createTempFile("002",txt,root)
-    root
-  }
+  private final val testDir = new File(getClass.getResource("/testDir").getPath)
+  private final val numOfFiles = 8
 
-  val testDeepDir = {
-    val root = TempDirectory.create()
-    Path.fromString(s"${root.getAbsolutePath}/000/000/000") createDirectory ()
-    Path.fromString(s"${root.getAbsolutePath}/000/000/000.txt") createFile ()
-
-    Path.fromString(s"${root.getAbsolutePath}/001/000/000") createDirectory ()
-    Path.fromString(s"${root.getAbsolutePath}/001/001.txt") createFile ()
-
-    Path.fromString(s"${root.getAbsolutePath}/002/000/000") createDirectory ()
-    Path.fromString(s"${root.getAbsolutePath}/002/001/000") createDirectory ()
-    Path.fromString(s"${root.getAbsolutePath}/002/001/002.txt") createFile ()
-
-    Path.fromString(s"${root.getAbsolutePath}/003.txt") createDirectory ()
-
-    root
-  }
-
-  test("fileMap should be able to walk a directory"){
+  test("fileMap should recurse a directory") {
     val fm = FilesMap(testDir, MD5Mapper)
-    val actual = fm.walk(testDir)
-    assert(actual.size == 3)
+    val actual = fm.files
+    assert(actual.size == numOfFiles)
   }
 
-  test("fileMap should be able to recurse a directory"){
-    val fm = FilesMap(testDeepDir, MD5Mapper)
-    val actual = fm.walk(testDeepDir)
-    assert(actual.size == 4)
+  test("fileMap should create index form deep directory ") {
+    val fm = FilesMap(testDir, MD5Mapper)
+    val actual = fm.store
+    assert(actual.size == numOfFiles)
   }
 
 }

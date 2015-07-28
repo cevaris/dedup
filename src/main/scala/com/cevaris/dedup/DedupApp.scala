@@ -1,15 +1,14 @@
 package com.cevaris.dedup
 
 
-import java.io.{FileNotFoundException, File}
-import java.nio.file.{Paths, Path}
+import java.io.{File, FileNotFoundException}
 
 import com.cevaris.dedup.exceptions.MissingSourceFile
-import com.cevaris.dedup.io.{MD5Mapper, FilesMap}
+import com.cevaris.dedup.io.{FilesMap, MD5Mapper}
 import com.twitter.app.App
 import com.twitter.logging.Logger
 
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 object DedupApp extends App {
