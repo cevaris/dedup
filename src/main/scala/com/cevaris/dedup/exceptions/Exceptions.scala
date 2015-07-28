@@ -1,3 +1,5 @@
 package com.cevaris.dedup.exceptions
 
-object MissingSourceFile extends RuntimeException
+sealed trait DedupError extends  RuntimeException
+
+object MissingSourceFile extends DedupError

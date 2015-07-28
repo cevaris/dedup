@@ -1,33 +1,25 @@
 package com.cevaris.dedup.io
 
-import java.io.{FilenameFilter, File}
-import java.nio.charset.MalformedInputException
-import java.security.MessageDigest
+import java.io.{File, FilenameFilter}
 
 import com.twitter.logging.Logger
 
 import scala.io.Source
 
-sealed trait Mapper {
-  def toKey(a: Option[Array[Byte]]): Option[String]
-}
-
-object MD5Mapper extends Mapper {
-  def toKey(a: Option[Array[Byte]]): Option[String] = {
-    val digest = MessageDigest.getInstance("MD5")
-    a.map(digest.digest(_).mkString)
-  }
-}
-
-case class FilesMap(source: File, mapper: Mapper, extFilters: Seq[String]) {
+case class FilesMap(source: File, mapper: Mapper, extFilters: Seq[ExtensionFilter]) {
   private[this] val log = Logger.get(getClass)
   private[this] implicit val codec = scala.io.Codec.ISO8859
 
   private[this] val filter =
     new FilenameFilter {
-      override def accept(dir: File, name: String): Boolean =
-        // if empty list, accept file
-        extFilters.filter(name.endsWith(_)).isEmpty
+      override def accept(dir: File, name: String): Boolean = {
+        // if result is empty, accept file
+        val result = extFilters.filter { ef: ExtensionFilter =>
+          name.toLowerCase.endsWith(ef.name)
+        }.isEmpty
+        if(!result) log.debug(s"skipping file ${dir.getAbsolutePath}/$name")
+        result
+      }
     }
 
   val files = walk(source)
@@ -37,33 +29,31 @@ case class FilesMap(source: File, mapper: Mapper, extFilters: Seq[String]) {
 
     // Non-directory files return null on `listFiles`
     // this happens when given a single file to browse
-    if (f.isFile && f.listFiles == null) return Seq(f)
+    if(!f.isDirectory) return Seq.empty[File]
 
-    f.listFiles(filter).foldLeft(Seq.empty[File]) {
+    val fs = f.listFiles(filter).foldLeft(Seq.empty[File]) {
       case (xs, x: File) if x.isDirectory =>
-        log.info(s"found directory ${x.getAbsolutePath}")
+        log.debug(s"found directory ${x.getAbsolutePath}")
         xs ++ walk(x)
       case (xs, x: File) if x.isFile =>
-        log.info(s"found file ${x.getAbsolutePath}")
+        log.debug(s"found file ${x.getAbsolutePath}")
         xs ++ Seq(x)
     }
+
+    log.debug(s"found files $fs")
+    fs
   }
 
-  private def fileToBytes(f: File): Option[Array[Byte]] = try {
-    Some(Source.fromFile(f).map(_.toByte).toArray)
-  } catch {
-    case e: MalformedInputException =>
-      log.error(e, s"error while reading ${f.getAbsolutePath}")
-      None
+  private def fileToBytes(f: File): Array[Byte] = {
+    log.debug(s"converting to bytes file ${f.toPath}")
+    Source.fromFile(f).map(_.toByte).toArray
   }
 
-  private def index = files.par.map { f: File =>
-    fileToBytes(f).map { bytes: Array[Byte] =>
-      mapper.toKey(Some(bytes)).map(_ -> f)
-    }
-  }.map(_.map(_.toMap))
+  private def index = files.par map { f: File =>
+    mapper.toKey(fileToBytes(f)) -> f
+  }
 
   override def toString: String = {
-    s"Files Found: ${files.size.toString}"
+    s"#Unique files: ${files.size.toString}\n#Total files: ${index.size}"
   }
 }
