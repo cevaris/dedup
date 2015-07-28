@@ -20,7 +20,7 @@ object DedupApp extends App {
     if(f.exists()) f else throw new FileNotFoundException(s)
   })
 
-  def md5Mapper(f: File) = FilesMap(f, MD5Mapper)
+  def md5Mapper(f: File) = FilesMap(f, MD5Mapper, List("mp4"))
 
   val sourceFlag = flag("file", "", "Source file/directory")
 

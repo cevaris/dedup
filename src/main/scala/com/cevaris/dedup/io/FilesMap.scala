@@ -1,6 +1,6 @@
 package com.cevaris.dedup.io
 
-import java.io.File
+import java.io.{FilenameFilter, File}
 import java.nio.charset.MalformedInputException
 import java.security.MessageDigest
 
@@ -19,8 +19,16 @@ object MD5Mapper extends Mapper {
   }
 }
 
-case class FilesMap(source: File, mapper: Mapper) {
+case class FilesMap(source: File, mapper: Mapper, extFilters: Seq[String]) {
   private[this] val log = Logger.get(getClass)
+  private[this] implicit val codec = scala.io.Codec.ISO8859
+
+  private[this] val filter =
+    new FilenameFilter {
+      override def accept(dir: File, name: String): Boolean =
+        // if empty list, accept file
+        extFilters.filter(name.endsWith(_)).isEmpty
+    }
 
   val files = walk(source)
   val store = index
@@ -31,7 +39,7 @@ case class FilesMap(source: File, mapper: Mapper) {
     // this happens when given a single file to browse
     if (f.isFile && f.listFiles == null) return Seq(f)
 
-    f.listFiles.foldLeft(Seq.empty[File]) {
+    f.listFiles(filter).foldLeft(Seq.empty[File]) {
       case (xs, x: File) if x.isDirectory =>
         log.info(s"found directory ${x.getAbsolutePath}")
         xs ++ walk(x)
@@ -42,21 +50,20 @@ case class FilesMap(source: File, mapper: Mapper) {
   }
 
   private def fileToBytes(f: File): Option[Array[Byte]] = try {
-    Some(Source.fromFile(f)(scala.io.Codec.ISO8859).map(_.toByte).toArray)
+    Some(Source.fromFile(f).map(_.toByte).toArray)
   } catch {
     case e: MalformedInputException =>
       log.error(e, s"error while reading ${f.getAbsolutePath}")
       None
   }
 
-
-  private def index = (files.par.map { f: File =>
+  private def index = files.par.map { f: File =>
     fileToBytes(f).map { bytes: Array[Byte] =>
       mapper.toKey(Some(bytes)).map(_ -> f)
     }
-  }).map(_.map(_.toMap))
+  }.map(_.map(_.toMap))
 
   override def toString: String = {
-    store.toString
+    s"Files Found: ${files.size.toString}"
   }
 }
