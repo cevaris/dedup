@@ -32,7 +32,7 @@ class FilesMapTest extends org.scalatest.FunSuite {
 
   private final val testDir = new File(getClass.getResource("/testDir").getPath)
   private final val testFilter = new File(getClass.getResource("/testFilters").getPath)
-  private final val numOfFiles = 8
+  private final val numOfFiles = 9
 
   private def fileMap = FilesMap(testDir, MD5Mapper, Seq.empty[ExtensionFilter])
 

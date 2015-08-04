@@ -13,6 +13,7 @@ object MD5Mapper extends Mapper {
 
   def toKey(a: Array[Byte]): String = {
     log.debug(s"forging key for file ${a}")
-    MessageDigest.getInstance("MD5").digest(a).mkString
+    val digest = MessageDigest.getInstance("MD5").digest(a)
+    return new String(java.util.Base64.getEncoder().encode(digest));
   }
 }
